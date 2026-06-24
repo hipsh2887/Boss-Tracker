@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>보스 등장 알람</title>
+<style>
+  :root {
+    --bg: #11131a;
+    --surface: #1b1e29;
+    --surface2: #242838;
+    --border: rgba(255,255,255,0.08);
+    --text: #eef0f5;
+    --text-dim: #9097ab;
+    --accent: #f0b429;
+    --accent-dark: #2a2106;
+    --accent2: #8b7af0;
+    --danger: #e2574c;
+    --soon: #ff8a3d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    position: relative;
+    color: var(--text);
+    font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Pretendard", sans-serif;
+    display: flex;
+    justify-content: center;
+    padding: 40px 16px 60px;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(ellipse 900px 520px at 6% -8%, rgba(240,180,41,0.16), transparent 60%),
+      radial-gradient(ellipse 760px 700px at 102% 108%, rgba(139,122,240,0.18), transparent 60%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Ccircle cx='12' cy='18' r='1' fill='white' fill-opacity='0.5'/%3E%3Ccircle cx='70' cy='45' r='1.3' fill='white' fill-opacity='0.35'/%3E%3Ccircle cx='112' cy='92' r='0.9' fill='white' fill-opacity='0.45'/%3E%3Ccircle cx='35' cy='105' r='1' fill='white' fill-opacity='0.3'/%3E%3Ccircle cx='92' cy='14' r='0.8' fill='white' fill-opacity='0.4'/%3E%3Ccircle cx='130' cy='62' r='0.7' fill='white' fill-opacity='0.3'/%3E%3C/svg%3E");
+    background-repeat: no-repeat, no-repeat, repeat;
+    background-size: auto, auto, 140px 140px;
+  }
+  .mono { font-family: "SF Mono", "Consolas", "Menlo", monospace; }
+  .wrap { width: 100%; max-width: 1040px; }
+  .brand {
+    font-size: 40px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin: 0 0 10px;
+    display: inline-block;
+    background: linear-gradient(135deg, #fde9ac, var(--accent) 55%, var(--accent2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 14px rgba(240,180,41,0.4));
+  }
+  .brand-rule { width: 72px; height: 4px; border-radius: 2px; margin: 0 0 20px; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+  .subtitle { font-size: 18px; color: var(--text-dim); margin: 0 0 28px; line-height: 1.7; }
+
+  .panel { background: rgba(27,30,41,0.78); backdrop-filter: blur(10px); border: 1px solid var(--border); border-radius: 18px; padding: 28px 32px; margin-bottom: 26px; }
+  .panel-row { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+  .now-clock { font-size: 18px; color: var(--text-dim); }
+  .now-clock b { color: var(--text); font-weight: 600; }
+  .lead-field { display: flex; align-items: center; gap: 10px; font-size: 17px; color: var(--text-dim); margin-left: auto; }
+  .lead-field input { width: 72px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 17px; padding: 9px 10px; }
+  .btn { border: none; border-radius: 10px; font-size: 17px; font-weight: 600; padding: 13px 20px; cursor: pointer; font-family: inherit; white-space: nowrap; }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), #ffd166); color: var(--accent-dark); }
+  .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--accent2); }
+  .btn-mini { background: var(--surface2); color: var(--accent2); border: 1px solid var(--accent2); border-radius: 8px; font-size: 15px; padding: 8px 14px; cursor: pointer; font-family: inherit; white-space: nowrap; }
+  .notif-status { font-size: 15px; color: var(--text-dim); }
+  .vol-field { display: flex; align-items: center; gap: 12px; font-size: 17px; color: var(--text-dim); }
+  .vol-field input[type="range"] { width: 150px; accent-color: var(--accent); cursor: pointer; }
+  .vol-field #volLabel { width: 48px; color: var(--text); font-size: 16px; }
+  .vol-field select { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 15px; padding: 8px 10px; font-family: inherit; max-width: 230px; }
+  .voice-note { font-size: 14px; color: var(--text-dim); margin: 12px 0 0; line-height: 1.6; }
+
+  .list { display: flex; flex-direction: column; gap: 14px; }
+  .row {
+    display: grid;
+    grid-template-columns: 38px 1fr 280px 150px 190px 88px;
+    align-items: center;
+    gap: 20px;
+    background: rgba(27,30,41,0.78);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 24px;
+    transition: background 0.3s, border-color 0.3s;
+  }
+  .row.disabled { opacity: 0.45; }
+  .row.soon { border-color: var(--soon); background: rgba(255,138,61,0.1); }
+  .row.flash { background: rgba(240,180,41,0.25); border-color: var(--accent); }
+
+  .row input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--accent); cursor: pointer; }
+
+  .info .loc { font-size: 28px; font-weight: 700; color: var(--text); margin: 0 0 6px; line-height: 1.25; }
+  .info .name { font-size: 16px; font-weight: 500; color: var(--text-dim); display: flex; align-items: center; gap: 9px; }
+  .badge { font-size: 13px; padding: 4px 11px; border-radius: 999px; font-weight: 500; letter-spacing: 0.02em; }
+  .badge.fixed { background: rgba(139,122,240,0.18); color: var(--accent2); }
+  .badge.relative { background: rgba(240,180,41,0.18); color: var(--accent); }
+
+  .killbox { display: flex; align-items: center; gap: 8px; }
+  .killbox input[type="datetime-local"] {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-size: 15px; padding: 9px 10px; width: 100%; flex: 1; font-family: inherit;
+  }
+  .dash { color: var(--text-dim); font-size: 18px; text-align: center; }
+
+  .next-time { font-size: 18px; color: var(--text-dim); text-align: right; }
+  .countdown { font-size: 29px; font-weight: 700; text-align: right; }
+  .countdown.soon { color: var(--soon); }
+  .countdown.unset { color: var(--text-dim); font-size: 15px; font-weight: 400; }
+
+  .row.expanded { border-radius: 14px 14px 0 0; border-bottom-color: transparent; }
+  .expand-btn {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text-dim);
+    border-radius: 9px; padding: 11px 10px; font-size: 15px; cursor: pointer; font-family: inherit;
+  }
+  .expand-btn:hover { color: var(--text); border-color: var(--accent2); }
+  .expand-btn.active { color: var(--accent); border-color: var(--accent); }
+
+  .detail-panel {
+    background: rgba(36,40,56,0.85);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 14px 14px;
+    margin-top: -14px;
+    margin-bottom: 14px;
+    padding: 24px 26px 26px;
+  }
+  .detail-label { font-size: 15px; color: var(--text-dim); margin: 0 0 12px; font-weight: 500; }
+  .quick-log-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .qlog { font-size: 15px; padding: 11px 14px; border-radius: 9px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; font-family: inherit; }
+  .qlog:hover { opacity: 0.85; }
+  .qlog-none { color: var(--text-dim); }
+  .qlog-fail { color: var(--soon); border-color: var(--soon); }
+  .qlog-success { color: var(--accent); border-color: var(--accent); }
+
+  .item-form { display: flex; gap: 8px; margin-bottom: 12px; }
+  .item-form input {
+    flex: 1; min-width: 0; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-size: 15px; padding: 10px 11px; font-family: inherit;
+  }
+  .item-form input.qty-input { flex: 0 0 72px; text-align: center; }
+
+  .mini-log { display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto; }
+  .mini-empty { font-size: 14px; color: var(--text-dim); margin: 4px 0; }
+  .mini-log-row { display: flex; align-items: center; gap: 10px; font-size: 15px; padding: 10px 12px; background: var(--surface); border-radius: 8px; }
+  .mini-time { color: var(--text-dim); white-space: nowrap; }
+  .mini-status { font-weight: 600; white-space: nowrap; flex: 1; }
+  .mini-status.st-none { color: var(--text-dim); }
+  .mini-status.st-fail { color: var(--soon); }
+  .mini-status.st-success { color: var(--accent); }
+  .mini-item-text { flex: 1; }
+  .mini-del { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 15px; padding: 2px 6px; font-family: inherit; }
+  .mini-del:hover { color: var(--danger); }
+  .mini-toggle {
+    background: none; border: 1px solid var(--border); border-radius: 7px; color: var(--accent);
+    font-size: 13.5px; padding: 6px 10px; cursor: pointer; font-family: inherit; white-space: nowrap;
+  }
+  .mini-toggle:hover { border-color: var(--accent); }
+
+  .kill-items-panel {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 14px;
+    margin: 2px 0 4px 24px;
+  }
+
+  .alert-banner {
+    position: fixed; top: 18px; left: 50%; transform: translateX(-50%) translateY(-120%);
+    background: linear-gradient(135deg, var(--accent), #ffd166); color: var(--accent-dark); padding: 20px 32px; border-radius: 16px;
+    font-size: 19px; font-weight: 700; box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    transition: transform 0.4s ease; z-index: 100; text-align: center;
+  }
+  .alert-banner.show { transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 760px) {
+    .row { grid-template-columns: 26px 1fr; grid-template-areas: "chk info" "chk kill" "chk time" "chk expand"; row-gap: 10px; }
+    .badge { display: none; }
+    .killbox { grid-area: kill; }
+    .next-time, .countdown { grid-area: time; text-align: left; }
+    .next-time { display: inline-block; margin-right: 14px; }
+    .expand-btn { grid-area: expand; justify-self: start; }
+  }
+
+  .credit { margin: 0 0 36px; text-align: center; }
+  .credit-title { font-size: 14px; color: var(--text-dim); margin: 0 0 8px; letter-spacing: 0.02em; }
+  .credit-name {
+    font-size: 28px;
+    font-weight: 700;
+    margin: 0 0 12px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .credit-guild {
+    display: inline-block;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: rgba(139,122,240,0.18);
+    color: var(--accent2);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="credit">
+    <p class="credit-title">제작자 · 명치터져욧</p>
+    <p class="credit-name">이브라스2</p>
+    <span class="credit-guild">사령부 길드</span>
+  </div>
+
+  <p class="brand">BOSS ALARM</p>
+  <div class="brand-rule"></div>
+  <p class="subtitle">정기 등장 보스는 자동으로 다음 등장 시각을 계산해요. "처치 후 N시간" 보스는 처치 시각을 입력하면 그때부터 계산돼요. 시간이 되면 소리 + 알림으로 알려드려요.</p>
+
+  <div class="panel">
+    <div class="panel-row">
+      <button class="btn btn-primary" id="notifBtn">🔔 브라우저 알림 켜기</button>
+      <span class="notif-status" id="notifStatus"></span>
+      <div class="lead-field">
+        몇 분 전에 알림 <input type="number" id="leadMin" value="1" min="0" max="30"> 분
+      </div>
+    </div>
+    <div class="panel-row" style="margin-top:14px;">
+      <button class="btn btn-ghost" id="testSoundBtn">🔊 알림 음성 미리듣기</button>
+      <div class="vol-field">
+        목소리 <select id="voiceSelect"></select>
+      </div>
+      <div class="vol-field">
+        음량 <input type="range" id="volRange" min="0" max="100" value="50"> <span id="volLabel">50%</span>
+      </div>
+    </div>
+    <p class="voice-note">시스템/브라우저에 설치된 음성 중에서 골라보세요. 기기마다 목록이 달라요 — 한국어 여성 음성이 있다면 자동으로 먼저 선택해둘게요.</p>
+    <div class="panel-row" style="margin-top:14px;">
+      <span class="now-clock">현재 시각: <b id="nowClock">–</b></span>
+    </div>
+  </div>
+
+  <div class="list" id="list"></div>
+
+</div>
+
+<div class="alert-banner" id="alertBanner"></div>
+
+<script>
+const BOSSES = [
+  { name: "만드라고라", loc: "8. 포도밭", type: "fixed", times: [9,12,21,24] },
+  { name: "리치 마법사", loc: "13. 루테인 묘지", type: "fixed", times: [9,12,21,24] },
+  { name: "라그나", loc: "15. 메데나 숲", type: "fixed", times: [9,12,21,24] },
+  { name: "칼리타", loc: "29. 요정의 샘", type: "fixed", times: [9,12,21,24] },
+  { name: "가시 거북", loc: "45. 가시 은신처", type: "fixed", times: [9,12,21,24] },
+  { name: "환영의 아리엘", loc: "41. 생명 성지", type: "fixed", times: [9,12,21,24] },
+  { name: "오우거 두목", loc: "47. 야수 고개", type: "fixed", times: [9,12,21,24] },
+  { name: "데몬", loc: "52. 라즈카 주술지 3층", type: "fixed", times: [9,12,21,24] },
+  { name: "모그라스", loc: "18. 오크 정착지", type: "fixed", times: [12,21,24] },
+  { name: "사이클롭스", loc: "25. 채석장", type: "fixed", times: [12,21,24] },
+  { name: "스펙터", loc: "36. 이교도 집결지", type: "fixed", times: [12,21,24] },
+  { name: "라이칸", loc: "37. 저주받은 숲", type: "fixed", times: [12,21,24] },
+  { name: "발타로스", loc: "40. 칼테온 숲", type: "fixed", times: [12,21,24] },
+  { name: "오쿨루스", loc: "42. 아르타론 신전 2층", type: "fixed", times: [12,21,24] },
+  { name: "나가", loc: "2. 아이르 습지", type: "fixed", times: [21,24] },
+  { name: "하피 여왕", loc: "53. 추락한 성전", type: "fixed", times: [21,24] },
+  { name: "에린", loc: "55. 그라나 성소 3층", type: "fixed", times: [21,24] },
+  { name: "스콜", loc: "60. 불의 둥지 1층", type: "fixed", times: [21,24] },
+  { name: "피닉스", loc: "60. 불의 둥지 1층", type: "fixed", times: [21,24] },
+  { name: "수호자 라에쉬", loc: "54. 라에쉬 안식처", type: "relative", cooldownHours: 12 },
+  { name: "리퍼", loc: "32. 언데드 폐허", type: "relative", cooldownHours: 12 },
+  { name: "그윈트", loc: "34. 그윈트 둥지", type: "relative", cooldownHours: 12 },
+  { name: "드레이크", loc: "59. 레비아탄 계곡", type: "relative", cooldownHours: 12 },
+  { name: "잠식된 아리엘", loc: "61. 어둠의 성소 2층", type: "relative", cooldownHours: 12 },
+  { name: "검은 태양 라자엘", loc: "61. 어둠의 성소 3층", type: "relative", cooldownHours: 12 },
+];
+
+const STORE_KEY = 'boss_alarm_state_v1';
+let state = { enabled: {}, killTimes: {}, leadMin: 1, volume: 50, voiceName: null, occLogs: {}, itemLogs: {} };
+try {
+  const saved = localStorage.getItem(STORE_KEY);
+  if (saved) state = Object.assign(state, JSON.parse(saved));
+} catch (e) {}
+state.occLogs = state.occLogs || {};
+state.itemLogs = state.itemLogs || {};
+
+BOSSES.forEach(function(b) {
+  b.id = b.name;
+  if (!(b.id in state.enabled)) state.enabled[b.id] = true;
+  b.lastSeenNextTs = null;
+  b.fired = false;
+});
+
+function saveState() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {}
+}
+
+function startOfDay(ts) {
+  const d = new Date(ts);
+  d.setHours(0,0,0,0);
+  return d.getTime();
+}
+
+function nextFixedSpawn(times, now) {
+  const today = startOfDay(now);
+  const tomorrow = today + 86400000;
+  const yesterday = today - 86400000;
+  let candidates = [];
+  times.forEach(function(h) {
+    candidates.push(yesterday + h*3600000);
+    candidates.push(today + h*3600000);
+    candidates.push(tomorrow + h*3600000);
+  });
+  candidates = candidates.filter(function(t) { return t > now; });
+  return Math.min.apply(null, candidates);
+}
+
+function fmtHHMM(ts) {
+  const d = new Date(ts);
+  const dayDiff = Math.floor((startOfDay(ts) - startOfDay(Date.now())) / 86400000);
+  const hh = String(d.getHours()).padStart(2,'0');
+  const mm = String(d.getMinutes()).padStart(2,'0');
+  return (dayDiff > 0 ? '내일 ' : '') + hh + ':' + mm;
+}
+
+function fmtCountdown(ms) {
+  if (ms < 0) ms = 0;
+  const totalSec = Math.floor(ms/1000);
+  const h = Math.floor(totalSec/3600);
+  const m = Math.floor((totalSec%3600)/60);
+  const s = totalSec%60;
+  const pad = function(n){ return String(n).padStart(2,'0'); };
+  return (h>0 ? pad(h)+':' : '') + pad(m) + ':' + pad(s);
+}
+
+let expandedState = {};
+let expandedKillIdx = {};
+
+function fmtLogTime(ts) {
+  const d = new Date(ts);
+  const pad = function(n){ return String(n).padStart(2,'0'); };
+  return (d.getMonth()+1) + '/' + d.getDate() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+
+function addOccLog(bossId, appeared, killed) {
+  state.occLogs[bossId] = state.occLogs[bossId] || [];
+  state.occLogs[bossId].push({ ts: Date.now(), appeared: appeared, killed: killed, items: [] });
+  saveState();
+  refresh();
+}
+
+function deleteOccLog(bossId, idx) {
+  if (state.occLogs[bossId]) {
+    state.occLogs[bossId].splice(idx, 1);
+    saveState();
+    refresh();
+  }
+}
+
+function addKillItem(bossId, entryIdx, itemName, looter, qty) {
+  if (!itemName) return;
+  const entry = state.occLogs[bossId] && state.occLogs[bossId][entryIdx];
+  if (!entry) return;
+  entry.items = entry.items || [];
+  entry.items.push({ item: itemName, looter: looter || '미정', qty: qty && qty > 0 ? qty : 1 });
+  saveState();
+  refresh();
+}
+
+function deleteKillItem(bossId, entryIdx, itemIdx) {
+  const entry = state.occLogs[bossId] && state.occLogs[bossId][entryIdx];
+  if (!entry || !entry.items) return;
+  entry.items.splice(itemIdx, 1);
+  saveState();
+  refresh();
+}
+
+function buildKillItemsPanel(b, idx, entry) {
+  const wrap = document.createElement('div');
+  wrap.className = 'kill-items-panel';
+
+  const form = document.createElement('div');
+  form.className = 'item-form';
+  const itemNameInput = document.createElement('input');
+  itemNameInput.type = 'text';
+  itemNameInput.placeholder = '아이템명';
+  const qtyInput = document.createElement('input');
+  qtyInput.type = 'number';
+  qtyInput.className = 'qty-input';
+  qtyInput.placeholder = '수량';
+  qtyInput.min = '1';
+  qtyInput.value = '1';
+  const looterInput = document.createElement('input');
+  looterInput.type = 'text';
+  looterInput.placeholder = '획득자';
+  const addBtn = document.createElement('button');
+  addBtn.className = 'btn-mini';
+  addBtn.textContent = '추가';
+  function submitItem() {
+    const qty = parseInt(qtyInput.value, 10);
+    addKillItem(b.id, idx, itemNameInput.value.trim(), looterInput.value.trim(), isFinite(qty) && qty > 0 ? qty : 1);
+    qtyInput.value = '1';
+  }
+  addBtn.addEventListener('click', submitItem);
+  itemNameInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') submitItem(); });
+  qtyInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') submitItem(); });
+  looterInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') submitItem(); });
+  form.appendChild(itemNameInput);
+  form.appendChild(qtyInput);
+  form.appendChild(looterInput);
+  form.appendChild(addBtn);
+  wrap.appendChild(form);
+
+  const list = document.createElement('div');
+  list.className = 'mini-log';
+  const items = entry.items || [];
+  if (items.length === 0) {
+    list.innerHTML = '<p class="mini-empty">아직 기록된 아이템이 없어요.</p>';
+  } else {
+    items.slice().reverse().forEach(function(it, revIdx) {
+      const iIdx = items.length - 1 - revIdx;
+      const row = document.createElement('div');
+      row.className = 'mini-log-row';
+      const textSpan = document.createElement('span');
+      textSpan.className = 'mini-item-text';
+      const qty = it.qty || 1;
+      textSpan.textContent = it.item + (qty > 1 ? ' ' + qty + '개' : '') + ' \u2014 ' + it.looter;
+      const delBtn = document.createElement('button');
+      delBtn.className = 'mini-del';
+      delBtn.textContent = '✕';
+      delBtn.addEventListener('click', function() { deleteKillItem(b.id, idx, iIdx); });
+      row.appendChild(textSpan);
+      row.appendChild(delBtn);
+      list.appendChild(row);
+    });
+  }
+  wrap.appendChild(list);
+  return wrap;
+}
+
+function buildDetailPanel(b) {
+  const panel = document.createElement('div');
+  panel.className = 'detail-panel';
+
+  const occLabel = document.createElement('p');
+  occLabel.className = 'detail-label';
+  occLabel.textContent = '이번 타임 결과 기록';
+  panel.appendChild(occLabel);
+
+  const qlogRow = document.createElement('div');
+  qlogRow.className = 'quick-log-row';
+  [
+    { cls: 'qlog-none', text: '출현 안함', appeared: false, killed: false },
+    { cls: 'qlog-fail', text: '출현 · 처치 못함', appeared: true, killed: false },
+    { cls: 'qlog-success', text: '출현 · 처치함', appeared: true, killed: true }
+  ].forEach(function(cfg) {
+    const btn = document.createElement('button');
+    btn.className = 'qlog ' + cfg.cls;
+    btn.textContent = cfg.text;
+    btn.addEventListener('click', function() { addOccLog(b.id, cfg.appeared, cfg.killed); });
+    qlogRow.appendChild(btn);
+  });
+  panel.appendChild(qlogRow);
+
+  const occList = document.createElement('div');
+  occList.className = 'mini-log';
+  const occEntries = state.occLogs[b.id] || [];
+  if (occEntries.length === 0) {
+    occList.innerHTML = '<p class="mini-empty">기록 없음</p>';
+  } else {
+    occEntries.slice().reverse().forEach(function(e, revIdx) {
+      const idx = occEntries.length - 1 - revIdx;
+      const isKill = e.appeared && e.killed;
+      const statusText = !e.appeared ? '출현 안함' : (e.killed ? '출현 · 처치O' : '출현 · 처치X');
+      const statusClass = !e.appeared ? 'st-none' : (e.killed ? 'st-success' : 'st-fail');
+      const killKey = b.id + ':' + idx;
+
+      const row = document.createElement('div');
+      row.className = 'mini-log-row';
+
+      const timeSpan = document.createElement('span');
+      timeSpan.className = 'mini-time';
+      timeSpan.textContent = isKill ? (fmtLogTime(e.ts) + ' 처치') : fmtLogTime(e.ts);
+
+      const statusSpan = document.createElement('span');
+      statusSpan.className = 'mini-status ' + statusClass;
+      statusSpan.textContent = statusText;
+
+      row.appendChild(timeSpan);
+      row.appendChild(statusSpan);
+
+      if (isKill) {
+        const itemCount = (e.items || []).length;
+        const toggleBtn = document.createElement('button');
+        toggleBtn.className = 'mini-toggle';
+        toggleBtn.textContent = (itemCount > 0 ? '아이템 ' + itemCount + '개 ' : '아이템 기록 ') + (expandedKillIdx[killKey] ? '▴' : '▾');
+        toggleBtn.addEventListener('click', function() {
+          expandedKillIdx[killKey] = !expandedKillIdx[killKey];
+          refresh();
+        });
+        row.appendChild(toggleBtn);
+      }
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'mini-del';
+      delBtn.textContent = '✕';
+      delBtn.title = '이 기록 삭제';
+      delBtn.addEventListener('click', function() { deleteOccLog(b.id, idx); });
+      row.appendChild(delBtn);
+
+      occList.appendChild(row);
+
+      if (isKill && expandedKillIdx[killKey]) {
+        occList.appendChild(buildKillItemsPanel(b, idx, e));
+      }
+    });
+  }
+  panel.appendChild(occList);
+
+  return panel;
+}
+
+function toLocalInputValue(ts) {
+  const d = new Date(ts);
+  const pad = function(n){ return String(n).padStart(2,'0'); };
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+
+let audioCtx = null;
+function ensureAudioCtx() {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; }
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(function() {});
+  }
+  return audioCtx;
+}
+document.addEventListener('click', ensureAudioCtx);
+
+function playBeep() {
+  const ctx = ensureAudioCtx();
+  if (!ctx) return;
+  const vol = (state.volume != null ? state.volume : 50) / 100;
+  [0, 220].forEach(function(delay, i) {
+    setTimeout(function() {
+      try {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = 'sine';
+        o.frequency.value = i === 0 ? 880 : 1040;
+        g.gain.value = vol * 0.4;
+        o.start();
+        setTimeout(function(){ o.stop(); }, 180);
+      } catch (e) {}
+    }, delay);
+  });
+}
+
+let cachedVoices = [];
+function populateVoiceSelect() {
+  const sel = document.getElementById('voiceSelect');
+  if (!sel) return;
+  if (cachedVoices.length === 0) {
+    sel.innerHTML = '<option>시스템 음성 불러오는 중...</option>';
+    return;
+  }
+  const sorted = cachedVoices.slice().sort(function(a, b) {
+    const aKo = (a.lang && a.lang.toLowerCase().indexOf('ko') === 0) ? 0 : 1;
+    const bKo = (b.lang && b.lang.toLowerCase().indexOf('ko') === 0) ? 0 : 1;
+    return aKo - bKo;
+  });
+  sel.innerHTML = '';
+  sorted.forEach(function(v) {
+    const opt = document.createElement('option');
+    opt.value = v.name;
+    opt.textContent = v.name + ' (' + v.lang + ')';
+    sel.appendChild(opt);
+  });
+  if (state.voiceName && sorted.some(function(v){ return v.name === state.voiceName; })) {
+    sel.value = state.voiceName;
+  } else {
+    const koVoice = sorted.filter(function(v){ return v.lang && v.lang.toLowerCase().indexOf('ko') === 0; })[0];
+    if (koVoice) {
+      sel.value = koVoice.name;
+      state.voiceName = koVoice.name;
+      saveState();
+    }
+  }
+}
+function refreshVoices() {
+  if (!window.speechSynthesis) return;
+  cachedVoices = window.speechSynthesis.getVoices();
+  populateVoiceSelect();
+}
+if (window.speechSynthesis) {
+  refreshVoices();
+  window.speechSynthesis.onvoiceschanged = refreshVoices;
+}
+
+function speak(text) {
+  if (!window.speechSynthesis) { playBeep(); return; }
+  try {
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'ko-KR';
+    utter.rate = 1.0;
+    utter.pitch = 1.15;
+    utter.volume = (state.volume != null ? state.volume : 50) / 100;
+    if (state.voiceName) {
+      const v = cachedVoices.filter(function(v2){ return v2.name === state.voiceName; })[0];
+      if (v) utter.voice = v;
+    }
+    window.speechSynthesis.speak(utter);
+  } catch (e) { playBeep(); }
+}
+
+function fmtAmPmHour(ts) {
+  const d = new Date(ts);
+  const h24 = d.getHours();
+  const ampm = h24 < 12 ? '오전' : '오후';
+  let h12 = h24 % 12; if (h12 === 0) h12 = 12;
+  return ampm + ' ' + h12 + '시';
+}
+
+function buildGroupAnnouncement(ts, leadMin) {
+  const timeStr = fmtAmPmHour(ts);
+  return leadMin > 0 ? (timeStr + ' 보스타임 ' + leadMin + '분 전입니다.') : (timeStr + ' 보스타임입니다.');
+}
+
+function buildBossAnnouncement(boss, leadMin) {
+  return leadMin > 0 ? (boss.name + ' 등장 ' + leadMin + '분 전입니다.') : (boss.name + ' 등장 시간입니다.');
+}
+
+let titleFlickerInterval = null;
+const ORIGINAL_TITLE = document.title;
+function flickerTitle(text) {
+  let on = false;
+  let count = 0;
+  if (titleFlickerInterval) clearInterval(titleFlickerInterval);
+  titleFlickerInterval = setInterval(function() {
+    document.title = on ? ORIGINAL_TITLE : text;
+    on = !on;
+    count++;
+    if (count > 8) {
+      clearInterval(titleFlickerInterval);
+      document.title = ORIGINAL_TITLE;
+    }
+  }, 800);
+}
+
+function showBanner(text) {
+  const el = document.getElementById('alertBanner');
+  el.textContent = text;
+  el.classList.add('show');
+  setTimeout(function() { el.classList.remove('show'); }, 5000);
+}
+
+function triggerAlert(speechText, bannerText, notifTitle, notifBody, bosses, now) {
+  speak(speechText);
+  flickerTitle('🔔 ' + bannerText);
+  showBanner('🔔 ' + bannerText);
+  if (window.Notification && Notification.permission === 'granted') {
+    try { new Notification(notifTitle, { body: notifBody }); } catch (e) {}
+  }
+  bosses.forEach(function(b) { b.flashUntilTs = now + 4000; });
+}
+
+let firedGroups = {};
+
+function tick() {
+  const now = Date.now();
+  document.getElementById('nowClock').textContent = new Date(now).toLocaleString('ko-KR', { hour12: false });
+
+  const leadMs = (state.leadMin || 0) * 60000;
+  const fixedGroups = {};
+
+  BOSSES.forEach(function(b) {
+    if (b.type === 'fixed') {
+      b.nextTs = nextFixedSpawn(b.times, now);
+      if (state.enabled[b.id]) {
+        (fixedGroups[b.nextTs] = fixedGroups[b.nextTs] || []).push(b);
+      }
+    } else {
+      const kt = state.killTimes[b.id];
+      b.nextTs = kt ? (kt + b.cooldownHours*3600000) : null;
+
+      if (b.nextTs !== b.lastSeenNextTs) {
+        b.fired = false;
+        b.lastSeenNextTs = b.nextTs;
+      }
+      if (state.enabled[b.id] && b.nextTs != null && !b.fired && now >= b.nextTs - leadMs) {
+        triggerAlert(
+          buildBossAnnouncement(b, state.leadMin),
+          b.name + ' (' + b.loc + ') 등장! — ' + fmtHHMM(b.nextTs),
+          '보스 등장: ' + b.name, b.loc + ' · ' + fmtHHMM(b.nextTs),
+          [b], now
+        );
+        b.fired = true;
+      }
+    }
+  });
+
+  Object.keys(fixedGroups).forEach(function(key) {
+    const ts = Number(key);
+    if (firedGroups[ts] || now < ts - leadMs) return;
+    const groupBosses = fixedGroups[key];
+    const names = groupBosses.map(function(b){ return b.name; }).join(', ');
+    triggerAlert(
+      buildGroupAnnouncement(ts, state.leadMin),
+      fmtAmPmHour(ts) + ' 보스타임! — ' + names,
+      fmtAmPmHour(ts) + ' 보스타임', names,
+      groupBosses, now
+    );
+    firedGroups[ts] = true;
+  });
+
+  // While a detail panel is open, avoid rebuilding the whole list every second —
+  // that would destroy any text being typed into the item-name/looter inputs.
+  // Just patch the live countdown numbers on the existing rows instead.
+  const anyExpanded = Object.keys(expandedState).some(function(id) { return expandedState[id]; });
+  if (anyExpanded) {
+    patchRowsLight(now, leadMs);
+  } else {
+    renderList(now, leadMs);
+  }
+}
+
+function patchRowsLight(now, leadMs) {
+  BOSSES.forEach(function(b) {
+    const rowEl = document.querySelector('.row[data-id="' + b.id + '"]');
+    if (!rowEl) return;
+
+    const remain = b.nextTs != null ? b.nextTs - now : null;
+    const isSoon = remain != null && remain <= leadMs && remain >= 0;
+
+    rowEl.classList.toggle('soon', !!isSoon);
+    rowEl.classList.toggle('flash', !!(b.flashUntilTs && now < b.flashUntilTs));
+
+    const nextEl = rowEl.querySelector('.next-time');
+    if (nextEl) nextEl.textContent = b.nextTs != null ? fmtHHMM(b.nextTs) : '미입력';
+
+    const cdEl = rowEl.querySelector('.countdown');
+    if (!cdEl) return;
+    if (b.nextTs != null) {
+      if (remain < 0 && b.type === 'relative') {
+        cdEl.className = 'countdown soon';
+        cdEl.textContent = '⚔ 등장함';
+      } else {
+        cdEl.className = 'countdown' + (isSoon ? ' soon' : '');
+        cdEl.textContent = fmtCountdown(remain);
+      }
+    } else {
+      cdEl.className = 'countdown unset';
+      cdEl.textContent = '처치시간 입력';
+    }
+  });
+}
+
+function refresh() {
+  renderList(Date.now(), (state.leadMin || 0) * 60000);
+}
+
+function renderList(now, leadMs) {
+  const sorted = BOSSES.slice().sort(function(a, b2) {
+    if (a.nextTs == null && b2.nextTs == null) return 0;
+    if (a.nextTs == null) return 1;
+    if (b2.nextTs == null) return -1;
+    return a.nextTs - b2.nextTs;
+  });
+
+  const listEl = document.getElementById('list');
+  listEl.innerHTML = '';
+
+  sorted.forEach(function(b) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.dataset.id = b.id;
+
+    const enabled = state.enabled[b.id];
+    if (!enabled) row.classList.add('disabled');
+
+    const remain = b.nextTs != null ? b.nextTs - now : null;
+    const isSoon = remain != null && remain <= leadMs && remain >= 0;
+    if (isSoon) row.classList.add('soon');
+    if (b.flashUntilTs && now < b.flashUntilTs) row.classList.add('flash');
+
+    const chkWrap = document.createElement('div');
+    const chk = document.createElement('input');
+    chk.type = 'checkbox';
+    chk.checked = enabled;
+    chk.addEventListener('change', function() {
+      state.enabled[b.id] = chk.checked;
+      saveState();
+      refresh();
+    });
+    chkWrap.appendChild(chk);
+    row.appendChild(chkWrap);
+
+    const info = document.createElement('div');
+    info.className = 'info';
+    const badgeClass = b.type === 'fixed' ? 'fixed' : 'relative';
+    const badgeText = b.type === 'fixed' ? '정기' : '처치 후 ' + b.cooldownHours + 'h';
+    info.innerHTML = '<div class="loc">' + b.loc + '</div>' +
+                      '<div class="name">' + b.name + ' <span class="badge ' + badgeClass + '">' + badgeText + '</span></div>';
+    row.appendChild(info);
+
+    const killCell = document.createElement('div');
+    if (b.type === 'relative') {
+      killCell.className = 'killbox';
+      const dt = document.createElement('input');
+      dt.type = 'datetime-local';
+      const kt = state.killTimes[b.id];
+      if (kt) dt.value = toLocalInputValue(kt);
+      dt.addEventListener('change', function() {
+        if (dt.value) {
+          state.killTimes[b.id] = new Date(dt.value).getTime();
+          saveState();
+          refresh();
+        }
+      });
+      const nowBtn = document.createElement('button');
+      nowBtn.className = 'btn-mini';
+      nowBtn.textContent = '지금';
+      nowBtn.addEventListener('click', function() {
+        state.killTimes[b.id] = Date.now();
+        saveState();
+        refresh();
+      });
+      killCell.appendChild(dt);
+      killCell.appendChild(nowBtn);
+    } else {
+      killCell.className = 'dash';
+      killCell.textContent = '–';
+    }
+    row.appendChild(killCell);
+
+    const nextEl = document.createElement('div');
+    nextEl.className = 'next-time';
+    nextEl.textContent = b.nextTs != null ? fmtHHMM(b.nextTs) : '미입력';
+    row.appendChild(nextEl);
+
+    const cdEl = document.createElement('div');
+    if (b.nextTs != null) {
+      if (remain < 0 && b.type === 'relative') {
+        cdEl.className = 'countdown soon';
+        cdEl.textContent = '⚔ 등장함';
+      } else {
+        cdEl.className = 'countdown' + (isSoon ? ' soon' : '');
+        cdEl.textContent = fmtCountdown(remain);
+      }
+    } else {
+      cdEl.className = 'countdown unset';
+      cdEl.textContent = '처치시간 입력';
+    }
+    row.appendChild(cdEl);
+
+    const expandBtn = document.createElement('button');
+    expandBtn.className = 'expand-btn' + (expandedState[b.id] ? ' active' : '');
+    expandBtn.textContent = expandedState[b.id] ? '접기 ▴' : '기록 ▾';
+    expandBtn.addEventListener('click', function() {
+      expandedState[b.id] = !expandedState[b.id];
+      refresh();
+    });
+    row.appendChild(expandBtn);
+
+    if (expandedState[b.id]) row.classList.add('expanded');
+
+    const block = document.createElement('div');
+    block.appendChild(row);
+    if (expandedState[b.id]) {
+      block.appendChild(buildDetailPanel(b));
+    }
+    listEl.appendChild(block);
+  });
+}
+
+document.getElementById('leadMin').value = state.leadMin;
+document.getElementById('leadMin').addEventListener('input', function(e) {
+  const v = parseInt(e.target.value, 10);
+  state.leadMin = isFinite(v) ? Math.max(0, v) : 0;
+  saveState();
+});
+
+const volRangeEl = document.getElementById('volRange');
+const volLabelEl = document.getElementById('volLabel');
+volRangeEl.value = state.volume;
+volLabelEl.textContent = state.volume + '%';
+volRangeEl.addEventListener('input', function(e) {
+  const v = parseInt(e.target.value, 10);
+  state.volume = isFinite(v) ? v : 50;
+  volLabelEl.textContent = state.volume + '%';
+  saveState();
+});
+
+document.getElementById('voiceSelect').addEventListener('change', function(e) {
+  state.voiceName = e.target.value;
+  saveState();
+});
+
+document.getElementById('testSoundBtn').addEventListener('click', function() {
+  const fixedUpcoming = BOSSES.filter(function(b) { return b.type === 'fixed' && b.nextTs != null; });
+  if (fixedUpcoming.length > 0) {
+    const soonest = fixedUpcoming.reduce(function(a, b) { return b.nextTs < a.nextTs ? b : a; });
+    speak(buildGroupAnnouncement(soonest.nextTs, state.leadMin));
+  } else {
+    speak(buildGroupAnnouncement(Date.now() + 3600000, state.leadMin));
+  }
+});
+
+function updateNotifStatus() {
+  const statusEl = document.getElementById('notifStatus');
+  const btn = document.getElementById('notifBtn');
+  if (!window.Notification) {
+    statusEl.textContent = '이 브라우저는 알림을 지원하지 않아요 (소리/화면 알림은 동작해요)';
+    btn.style.display = 'none';
+    return;
+  }
+  if (Notification.permission === 'granted') {
+    statusEl.textContent = '✓ 알림 켜짐';
+    btn.style.display = 'none';
+  } else if (Notification.permission === 'denied') {
+    statusEl.textContent = '브라우저 설정에서 알림이 차단되어 있어요 (소리/화면 알림은 동작해요)';
+    btn.style.display = 'none';
+  } else {
+    statusEl.textContent = '';
+    btn.style.display = 'inline-block';
+  }
+}
+
+document.getElementById('notifBtn').addEventListener('click', function() {
+  if (window.Notification) {
+    Notification.requestPermission().then(updateNotifStatus);
+  }
+});
+
+updateNotifStatus();
+tick();
+
+const workerCode = "setInterval(function(){ postMessage('tick'); }, 1000);";
+let ticker;
+try {
+  const blob = new Blob([workerCode], { type: 'application/javascript' });
+  ticker = new Worker(URL.createObjectURL(blob));
+  ticker.onmessage = tick;
+} catch (e) {
+  setInterval(tick, 1000);
+}
+</script>
+</body>
+</html>
