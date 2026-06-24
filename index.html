@@ -81,7 +81,7 @@
   .list { display: flex; flex-direction: column; gap: 14px; }
   .row {
     display: grid;
-    grid-template-columns: 38px 1fr 280px 150px 190px 88px;
+    grid-template-columns: 36px minmax(170px, 1fr) minmax(220px, 250px) minmax(85px, 110px) minmax(140px, 165px) 80px;
     align-items: center;
     gap: 20px;
     background: rgba(27,30,41,0.78);
@@ -181,13 +181,21 @@
   }
   .alert-banner.show { transform: translateX(-50%) translateY(0); }
 
-  @media (max-width: 760px) {
-    .row { grid-template-columns: 26px 1fr; grid-template-areas: "chk info" "chk kill" "chk time" "chk expand"; row-gap: 10px; }
+  @media (max-width: 900px) {
+    .row {
+      grid-template-columns: 26px 1fr;
+      grid-template-areas: "chk info" "chk kill" "chk next" "chk count" "chk expand";
+      row-gap: 10px;
+    }
     .badge { display: none; }
     .killbox { grid-area: kill; }
-    .next-time, .countdown { grid-area: time; text-align: left; }
-    .next-time { display: inline-block; margin-right: 14px; }
+    .dash { grid-area: kill; text-align: left; }
+    .next-time { grid-area: next; text-align: left; }
+    .countdown { grid-area: count; text-align: left; }
     .expand-btn { grid-area: expand; justify-self: start; }
+    .info .loc { font-size: 17px; line-height: 1.3; }
+    .info .name { font-size: 12px; }
+    .countdown { font-size: 24px; }
   }
 
   .credit { margin: 0 0 36px; text-align: center; }
